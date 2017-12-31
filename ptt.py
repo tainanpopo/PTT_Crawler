@@ -191,7 +191,7 @@ def handle_text_message(event):
     elif text == 'Info':
         line_bot_api.reply_message(
             event.reply_token,[
-            TextSendMessage(text = '指令 : \nGossiping : 八掛版\n' + 'NBA : NBA版\n' +  'Beauty : 表特版'),
+            TextSendMessage(text = '指令 : \nGossiping : 八卦版\n' + 'NBA : NBA版\n' +  'Beauty : 表特版'),
             StickerSendMessage(package_id = 1,sticker_id = 120)])
     else:
         line_bot_api.reply_message(
