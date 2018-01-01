@@ -123,40 +123,53 @@ def ptt_NBA():
         else:
         	content = '{}\n{}\n\n'.format(article.get('title', None), article.get('url_link', None))
     return content
-
 def ptt_Beauty():
     rs = requests.session()
     res = rs.get('https://www.ptt.cc/bbs/Beauty/index.html', verify=False)
     soup = BeautifulSoup(res.text, 'html.parser')
+    # 利用按鈕先找出上一頁的網址
+    last_page_url = soup.select('.btn.wide')[1]['href']
+    # 得到url中間的數字
+    now_page_number = get_page_number(last_page_url)
     article_beauty = []
-
-    # 如網頁忙線中,則休息一秒
-    if res.status_code != 200:
-        article_beauty.append('PTT忙線中!')
-        time.sleep(1)
-    else:
-    	# 找到每個文章的link
+    article_list = []
+    # 抓出最新3頁的所有文章連結放到article_list
+    for link in range(now_page_number - 2, now_page_number + 1):
+        now_page_url = 'https://www.ptt.cc/bbs/Beauty/index{}.html'.format(link)
+        res = requests.get(now_page_url)
+        soup = BeautifulSoup(res.text, 'html.parser')
         for article in soup.select('.r-ent a'):
             title = article.text.strip()
-            # 限定分類是正妹的文章
-            if title[0:4] == '[正妹]':
-                url = 'https://www.ptt.cc' + article['href']
-                title = article.text.strip()
-                res = requests.get(url)
-                soup = BeautifulSoup(res.text, 'html.parser')
-                # 利用regular expression找出是否有來自imgur.com的圖片
-                if len(soup.findAll('a', {'href':re.compile('http[s]?://[i.]*imgur.com/\w+\.(?:jpg|png|gif)')})) > 0:
-                    for index, img_url in enumerate(soup.findAll('a', {'href':re.compile('http[s]?://[i.]*imgur.com/\w+\.(?:jpg|png|gif)')})):
-                        try:
-                    	    article_beauty.append(img_url['href'])
-                        except:
-                            print('失敗!')
-                else:
-                	pass
+            # 限制分類，提升圖片品質
+            if '[正妹]' in title and not '[神人]' in title:
+                article_list.append('https://www.ptt.cc' + article['href'])
             else:
-            	pass
+                pass
+
+    article_num = len(article_list)
+    # 隨機選擇一篇文章
+    article_url = article_list[random.randint(0, article_num)]
+    article_res = requests.get(article_url)
+    article_soup = BeautifulSoup(article_res.text, 'html.parser')
+    # 利用regular expression找出此篇文章中是否有來自imgur.com的圖片
+    if len(article_soup.findAll('a', {'href':re.compile('http[s]?://[i.]*imgur.com/\w+\.(?:jpg|png|gif)')})) > 0:
+        for index, img_url in enumerate(article_soup.findAll('a', {'href':re.compile('http[s]?://[i.]*imgur.com/\w+\.(?:jpg|png|gif)')})):
+            try:
+            	# 將該文章中的所有圖片放進article_beauty
+                article_beauty.append(img_url['href'])
+            except:
+                print('失敗!')
+    else:
+        pass
+
     num = len(article_beauty)
     return article_beauty, num
+
+def get_page_number(content): #找page按鈕的url中間的數字
+    start_index = content.find('index')
+    end_index = content.find('.html')
+    page_number = content[start_index + 5: end_index]
+    return int(page_number) + 1
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
@@ -177,7 +190,9 @@ def handle_text_message(event):
         try:
             uId = event.source.user_id
             (content, number) = ptt_Beauty()
+            # 從article_beauty中隨機選擇一張圖片
             url = content[random.randint(0, number)]
+            print(url)
             line_bot_api.push_message(
                 uId, 
                 ImageSendMessage(
@@ -186,12 +201,13 @@ def handle_text_message(event):
         except Exception as e:
             line_bot_api.reply_message(
             event.reply_token,[
-                TextSendMessage(text = 'PTT忙線中!'),
+                TextSendMessage(text = '資料更新中!'),
                 StickerSendMessage(package_id = 2,sticker_id = 18)])
     elif text == 'Info':
         line_bot_api.reply_message(
             event.reply_token,[
-            TextSendMessage(text = '指令 : \nGossiping : 八卦版\n' + 'NBA : NBA版\n' +  'Beauty : 表特版'),
+            TextSendMessage(text = '指令 : \nGossiping : 八卦版\n' + 'NBA : NBA版\n' + 'Beauty : 表特版\n' +
+            	                   '注意 : \n有時候等比較久屬於正常狀況，\n' + '若30秒後無反應請再按一次。'),
             StickerSendMessage(package_id = 1,sticker_id = 120)])
     else:
         line_bot_api.reply_message(
