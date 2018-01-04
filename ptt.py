@@ -148,7 +148,7 @@ def ptt_Beauty():
 
     article_num = len(article_list)
     # 隨機選擇一篇文章
-    article_url = article_list[random.randint(0, article_num)]
+    article_url = article_list[random.randint(0, article_num - 1)]
     article_res = requests.get(article_url)
     article_soup = BeautifulSoup(article_res.text, 'html.parser')
     # 利用regular expression找出此篇文章中是否有來自imgur.com的圖片
@@ -191,7 +191,7 @@ def handle_text_message(event):
             uId = event.source.user_id
             (content, number) = ptt_Beauty()
             # 從article_beauty中隨機選擇一張圖片
-            url = content[random.randint(0, number)]
+            url = content[random.randint(0, number - 1)]
             print(url)
             line_bot_api.push_message(
                 uId, 
@@ -214,6 +214,15 @@ def handle_text_message(event):
             event.reply_token,[
                 TextSendMessage(text = '請打指令 : \nGossiping, NBA, Beauty, Info'),
                 StickerSendMessage(package_id = 1,sticker_id = 113)])
+
+@handler.add(MessageEvent, message=StickerMessage)
+def handle_sticker_message(event):
+    line_bot_api.reply_message(
+        event.reply_token,
+        StickerSendMessage(
+            package_id=event.message.package_id,
+            sticker_id=event.message.sticker_id)
+    )
 
 if __name__ == "__main__":
    app.run(host=os.getenv('IP', '0.0.0.0'),port=int(os.getenv('PORT', 8080)))
